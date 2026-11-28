@@ -126,6 +126,54 @@ If you prefer to not use the new VueJS UI, revert to Caldera v4.2.0. Correspondi
 
 **Additionally, please note [security recommendations](#Security) for deploying Caldera.**
 
+### Support diagnostic bundle
+
+Preview a support report as JSON, then create a new ZIP when ready:
+
+```Bash
+python3 -B -m app.utility.support_bundle -E local
+python3 -B -m app.utility.support_bundle -E local --output support-bundle.zip
+python3 -B -m app.utility.support_bundle --log logs/server.log --output support-with-log-summary.zip
+```
+
+The collector works independently of server startup and reports missing
+dependencies instead of importing the server or executing plugins. PyYAML is
+optional for collection; if unavailable, configuration status says so. `-E`
+selects a name in `conf/`; missing `local.yml` falls back to `default.yml` and is
+marked in the report. Nothing is uploaded. Review the preview before sharing.
+
+The archive contains only generated JSON reports:
+
+- `manifest.json`: schema version, UTC collection time and omission policy.
+- `environment.json`: OS family/architecture, Python and Caldera versions,
+  current commit SHA when available, a fixed list of public package versions,
+  and Node/npm/Go version probe results. Custom version strings are omitted.
+- `configuration.json`: bounded numeric main settings, host-binding category,
+  recognized enabled plugin names and credential-field presence booleans.
+  Arbitrary configuration fields, values, custom plugin names and users are omitted.
+- `plugins.json`: entrypoint presence for known plugins and Magma build presence.
+- `filesystem.json`: directory presence/access checks for the current process.
+- `logs/summary-N.json`: counts of severity tokens and fixed failure categories
+  for each explicitly selected log. These are approximate text counts, not parsed events.
+
+Raw configuration, raw log lines, source filenames, absolute paths, hostnames,
+usernames, environment variables, Git remotes, sessions, operation data, SSH
+keys and payload contents are not copied. Logs are deliberately summarized
+instead of using a secret-pattern denylist, which could miss unlabelled tokens.
+The collector reads regular files only: at most 1 MiB of configuration and the last 1 MiB of each of
+up to five explicitly named log files. Missing or invalid inputs produce safe
+status fields without source excerpts. Version commands time out after five
+seconds; Go probing disables toolchain downloads and telemetry.
+
+Without `--output`, the command only prints a preview. With `--output`, it
+exclusively creates a new `.zip`, refuses existing files, and prints its SHA-256.
+On POSIX the archive requests mode 0600 (effective permissions depend on the filesystem and umask); it is not
+encrypted. Exit code 0 means preview/archive collection succeeded, including
+reports with unavailable inputs; 1 means archive creation failed; 2 indicates
+invalid arguments. No raw intermediate files are created. This is a bounded
+support snapshot, not a full installation health check or a general-purpose
+log redactor; software versions and recognized plugin presence remain visible.
+
 ## Docker Installation
 
 Local build:
